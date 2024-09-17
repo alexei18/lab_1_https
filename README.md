@@ -31,7 +31,7 @@ Pentru a realiza cererile HTTP, am folosit următoarele comenzi în `curl`:
 - **Cerere GET:**
 
   ```bash
-  curl -X GET http://sandbox.com -H "User-Agent: [Numele și prenumele]"
+  curl -X GET http://sandbox.com -H "User-Agent: Onea Alexei"
   ```
 
 - **Cerere POST:**
