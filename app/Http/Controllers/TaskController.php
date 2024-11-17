@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
+use App\Models\Tag;
+use App\Models\Task;
 use Illuminate\Http\Request;
 
 class TaskController extends Controller
@@ -9,54 +12,92 @@ class TaskController extends Controller
     // List of tasks
     public function index()
     {
-        $tasks = [
-            ['id' => 1, 'title' => 'Task 1', 'description' => 'This is task 1'],
-            ['id' => 2, 'title' => 'Task 2', 'description' => 'This is task 2'],
-        ];
+        $tasks = Task::with('categories', 'tags')->get();
         return view('tasks.index', compact('tasks'));
     }
 
     // Show a single task
     public function show($id)
     {
-        $task = [
-            'id' => $id,
-            'title' => 'Task ' . $id,
-            'description' => 'This is the description for task ' . $id,
-        ];
+        $task = Task::with('categories', 'tags')->findOrFail($id);
         return view('tasks.show', compact('task'));
     }
 
     // Create a new task form
     public function create()
     {
-        return view('tasks.create');
+        $categories = Category::get();
+        $tags = Tag::get();
+        return view('tasks.create', compact('categories', 'tags'));
     }
 
-    // Store a new task
     public function store(Request $request)
-    {
-        // Logic to store the task
+{
+    $validated = $request->validate([
+        'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'category_id' => 'required|exists:categories,id',
+        'tags' => 'array',
+        'tags.*' => 'exists:tags,id'
+    ]);
+
+    $task = Task::create([
+        'title' => $validated['title'],
+        'description' => $validated['description'],
+        'category_id' => $validated['category_id'],
+    ]);
+
+    if (!empty($validated['tags'])) {
+        $task->tags()->sync($validated['tags']);
     }
 
-    // Edit an existing task
+    return redirect()->route('tasks.index')->with('success', 'Task created successfully!');
+}
+
+
     public function edit($id)
     {
-        // For now, return empty view
-        return view('tasks.edit');
+        $task = Task::with('tags')->findOrFail($id);
+        $categories = Category::all();
+        $tags = Tag::all();
+        return view('tasks.edit', compact('task', 'categories', 'tags'));
     }
+
+    public function update(Request $request, $id)
+{
+    $validated = $request->validate([
+        'title' => 'required|string|max:255', // Correct field name 'title'
+        'description' => 'nullable|string',
+        'category_id' => 'required|exists:categories,id',
+        'tags' => 'array',
+        'tags.*' => 'exists:tags,id'
+    ]);
+
+    $task = Task::findOrFail($id);
 
     // Update the task
-    public function update(Request $request, $id)
-    {
-        // Logic to update the task
+    $task->update([
+        'title' => $validated['title'],
+        'description' => $validated['description'],
+        'category_id' => $validated['category_id'],
+    ]);
+
+    if (!empty($validated['tags'])) {
+            $task->tags()->sync($validated['tags']);
+    } else {
+        $task->tags()->detach();
     }
 
-    // Delete a task
+    return redirect()->route('tasks.index')->with('success', 'Task updated successfully!');
+}
+
+
     public function destroy($id)
     {
-        // Logic to delete the task
-    }
+        $task = Task::findOrFail($id);
+        $task->tags()->detach();
+        $task->delete();
 
-    
+        return redirect()->route('tasks.index')->with('success', 'Task deleted successfully!');
+    }
 }
